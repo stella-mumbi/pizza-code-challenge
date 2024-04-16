@@ -1,15 +1,15 @@
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import MetaData
-from sqlalchemy.orm import validates
-from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy import CheckConstraint
+from sqlalchemy.orm import relationship
 from sqlalchemy_serializer import SerializerMixin
+from sqlalchemy.orm import validates
+from flask import Flask, jsonify
+app = Flask(__name__)
 
-metadata = MetaData(naming_convention={
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-})
 
-db = SQLAlchemy(metadata=metadata)
 
+
+db = SQLAlchemy()
 
 class Restaurant(db.Model, SerializerMixin):
     __tablename__ = 'restaurants'
@@ -18,40 +18,53 @@ class Restaurant(db.Model, SerializerMixin):
     name = db.Column(db.String)
     address = db.Column(db.String)
 
-    # add relationship
+    restaurant_pizzas = relationship("RestaurantPizza", back_populates="restaurant", cascade='all, delete')
 
-    # add serialization rules
+    serialize_rules = ('-restaurant_pizzas.restaurant',)
 
     def __repr__(self):
-        return f'<Restaurant {self.name}>'
-
+        return f'<Restaurant {self.id}>'
 
 class Pizza(db.Model, SerializerMixin):
     __tablename__ = 'pizzas'
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
-    ingredients = db.Column(db.String)
+    ingredients = db.Column(db.String)  
 
-    # add relationship
+    restaurant_pizzas = relationship("RestaurantPizza", back_populates="pizza", cascade='all, delete')
 
-    # add serialization rules
+    serialize_rules = ('-restaurant_pizzas.pizza',)
 
     def __repr__(self):
-        return f'<Pizza {self.name}, {self.ingredients}>'
-
+        return f'<Pizza {self.id}>'
 
 class RestaurantPizza(db.Model, SerializerMixin):
     __tablename__ = 'restaurant_pizzas'
 
     id = db.Column(db.Integer, primary_key=True)
-    price = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    ingredients = db.column(db.String)
 
-    # add relationships
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id', ondelete='CASCADE'))
+    pizza_id = db.Column(db.Integer, db.ForeignKey('pizzas.id', ondelete='CASCADE'))
 
-    # add serialization rules
+    restaurant = relationship("Restaurant", back_populates="restaurant_pizzas")
+    pizza = relationship("Pizza", back_populates="restaurant_pizzas")
 
-    # add validation
+    serialize_rules = ('-pizza.restaurant_pizzas', '-restaurant.restaurant_pizzas', 'pizza.id', 'pizza.name', 'pizza.ingredients', 'restaurant.id', 'restaurant.name', 'restaurant.address', 'price')
+
+    # __table_args__ = (
+    #     CheckConstraint('price >= 1 AND price <= 30', name='check_price_range'),
+    # )
+
+    @validates('price')
+    def validate_price(self, key, price):
+        if not 1 <= price <= 30:
+            raise ValueError("Price must be between 1 and 30")
+        return price
 
     def __repr__(self):
-        return f'<RestaurantPizza ${self.price}>'
+        return f'<RestaurantPizza {self.id}>'
+    
+    
