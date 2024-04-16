@@ -3,8 +3,8 @@ from sqlalchemy import CheckConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.orm import validates
-from flask import Flask, jsonify
-app = Flask(__name__)
+# from flask import Flask, jsonify
+# app = Flask(__name__)
 
 
 
